@@ -22,13 +22,12 @@ pub fn get_pyth_price(
         return Err(LendingError::NullOracleConfig.into());
     }
 
-    let data = &pyth_price_info.try_borrow_data()?;
-    let price_account = pyth_sdk_solana::state::load_price_account(data).map_err(|e| {
+    let price_feed = pyth_sdk_solana::load_price_feed_from_account_info(pyth_price_info).map_err(|e| {
         msg!("Couldn't load price feed from account info: {:?}", e);
         LendingError::InvalidOracleConfig
     })?;
-    let pyth_price = price_account
-        .get_price_no_older_than(clock, STALE_AFTER_SLOTS_ELAPSED)
+    let pyth_price = price_feed
+        .get_price_no_older_than(clock.unix_timestamp, STALE_AFTER_SLOTS_ELAPSED)
         .ok_or_else(|| {
             msg!("Pyth oracle price is too stale!");
             LendingError::InvalidOracleConfig
@@ -53,7 +52,6 @@ pub fn get_pyth_price(
 
     let market_price = pyth_price_to_decimal(&pyth_price);
     let ema_price = {
-        let price_feed = price_account.to_price_feed(pyth_price_info.key);
         // this can be unchecked bc the ema price is only used to _limit_ borrows and withdraws.
         // ie staleness doesn't _really_ matter for this field.
         //
