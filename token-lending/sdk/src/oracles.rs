@@ -4,7 +4,7 @@ use crate::{
     error::LendingError,
     math::{Decimal, TryDiv, TryMul},
 };
-use pyth_sdk_solana::Price;
+use pyth_sdk_solana::{Price, state::SolanaPriceAccount};
 // use pyth_sdk_solana;
 use solana_program::{
     account_info::AccountInfo, msg, program_error::ProgramError, sysvar::clock::Clock,
@@ -22,7 +22,7 @@ pub fn get_pyth_price(
         return Err(LendingError::NullOracleConfig.into());
     }
 
-    let price_feed = pyth_sdk_solana::load_price_feed_from_account_info(pyth_price_info).map_err(|e| {
+    let price_feed = SolanaPriceAccount::account_info_to_feed(pyth_price_info).map_err(|e| {
         msg!("Couldn't load price feed from account info: {:?}", e);
         LendingError::InvalidOracleConfig
     })?;
